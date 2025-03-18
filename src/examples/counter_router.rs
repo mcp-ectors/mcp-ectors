@@ -1,7 +1,7 @@
-use actix::prelude::*;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use actix::ResponseFuture;
 
 use crate::router::{router::CapabilitiesBuilder, Router};
 use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, ResourceContents::TextResourceContents, Tool, ToolError};
@@ -42,10 +42,6 @@ impl CounterRouter {
 
 }
 
-/// **Actix Actor implementation for CounterRouter**
-impl Actor for CounterRouter {
-    type Context = Context<Self>;
-}
 
 impl Router for CounterRouter {
     fn name(&self) -> String {

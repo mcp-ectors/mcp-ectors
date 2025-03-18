@@ -1,4 +1,4 @@
-use actix::prelude::*;
+use actix::ResponseFuture;
 use serde_json::Value;
 
 use crate::router::{router::CapabilitiesBuilder, Router};
@@ -14,10 +14,6 @@ impl HelloWorldRouter {
     }
 }
 
-/// **Actix Actor implementation for HelloWorldRouter**
-impl Actor for HelloWorldRouter {
-    type Context = Context<Self>;
-}
 
 impl Router for HelloWorldRouter {
     fn name(&self) -> String {
