@@ -7,7 +7,7 @@ license = "MIT"  # Choose an appropriate license or use SPDX identifiers
 repository = "https://github.com/mcp-ectors/mcp-ectors"  # Link to the repository
 documentation = "https://docs.rs/mcp-ectors" 
 keywords = ["mcp", "ai", "agents", "llm", "agentic"]  # Keywords for discoverability
-categories = ["WebAssembly"]  # Optional categories for discoverability
+categories = ["wasm"]  # Optional categories for discoverability
 readme = "README.md"  # If you have a readme, include it
 edition = "2021"
 
