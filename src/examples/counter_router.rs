@@ -1,9 +1,8 @@
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use actix::ResponseFuture;
 
-use crate::router::{router::CapabilitiesBuilder, Router};
+use crate::router::{router::{CapabilitiesBuilder, ResponseFuture}, Router};
 use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, ResourceContents::TextResourceContents, Tool, ToolError};
 
 /// **A simple counter router that implements `RouterHandler`**

@@ -1,7 +1,5 @@
 use std::{future::Future, pin::Pin};
-
-use actix::ResponseFuture;
-use mcp_ectors::router::Router;
+use mcp_ectors::router::{router::ResponseFuture, Router};
 use async_trait::async_trait;
 use mcp_spec::{handler::ResourceError, prompt::{Prompt, PromptMessage, PromptMessageContent, PromptMessageRole}, protocol::{CallToolResult, GetPromptResult, InitializeResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Annotations, Content::Text, Resource, ResourceContents::TextResourceContents, Role::User, TextContent, Tool};
 use serde_json::Value;

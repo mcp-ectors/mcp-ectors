@@ -1,0 +1,192 @@
+package wasix-mcp;
+
+interface mcp-router {
+
+  // Define custom types (records) based on Rust structs
+  record value {
+    key: string,
+    data: string
+  }
+
+  record tool {
+    name: string,
+    description: string,
+    input-schema: value
+  }
+
+  // Prompts capability (list_changed field)
+  record prompts-capability {
+    list-changed: option<bool>,
+  }
+
+  // Resources capability (subscribe and list_changed fields)
+  record resources-capability {
+    subscribe: option<bool>,
+    list-changed: option<bool>,
+  }
+
+  // Tools capability (list_changed field)
+  record tools-capability {
+    list-changed: option<bool>,
+  }
+
+  record server-capabilities {
+    prompts: option<prompts-capability>,
+    resources: option<resources-capability>,
+    tools: option<tools-capability>,
+  }
+
+  record call-tool-result {
+    content: list<content>,
+    is-error: option<bool>
+  }
+
+  enum content {
+    text(text-content),
+    image(image-content),
+    resource(embedded-resource)
+  }
+
+  record text-content {
+    text: string,
+    annotations: option<annotations>
+  }
+
+  record image-content {
+    data: string,
+    mime-type: string,
+    annotations: option<annotations>
+  }
+
+  record embedded-resource {
+    resource: resource-contents,
+    annotations: option<annotations>
+  }
+
+  record resource {
+    uri: string,
+    name: string,
+    description: option<string>,
+    mime-type: string,
+    annotations: option<annotations>
+  }
+
+  enum resource-contents {
+    text-resource-contents(text-resource-contents),
+    blob-resource-contents(blob-resource-contents)
+  }
+
+  record text-resource-contents {
+    uri: string,
+    mime-type: option<string>,
+    text: string
+  }
+
+  record blob-resource-contents {
+    uri: string,
+    mime-type: option<string>,
+    blob: string
+  }
+
+  record read-resource-result {
+    contents: list<resource-contents>
+  }
+
+  record annotations {
+    audience: option<list<role>>,
+    priority: option<f32>,
+    timestamp: option<datetime>
+  }
+
+  enum role {
+    user,
+    assistant
+  }
+
+  type datetime = string  // Define as string for UTC datetime
+  type f32 = f32
+  type f64 = f64
+
+  // Errors
+  enum tool-error {
+    invalid-parameters(string),
+    execution-error(string),
+    schema-error(string),
+    not-found(string)
+  }
+
+  enum resource-error {
+    execution-error(string),
+    not-found(string)
+  }
+
+  enum prompt-error {
+    invalid-parameters(string),
+    internal-error(string),
+    not-found(string)
+  }
+
+  // Define the Router interface
+  interface router {
+    name: func() -> string;
+    instructions: func() -> string;
+    capabilities: func() -> server-capabilities;
+    list-tools: func() -> list<tool>;
+    call-tool: func(tool-name: string, arguments: value) -> result<call-tool-result, tool-error>;
+    list-resources: func() -> list<resource>;
+    read-resource: func(uri: string) -> result<read-resource-result, resource-error>;
+    list-prompts: func() -> list<prompt>;
+    get-prompt: func(prompt-name: string) -> result<get-prompt-result, resource-error>;
+  }
+
+  record prompt {
+    name: string,
+    description: option<string>,
+    arguments: option<list<prompt-argument>>
+  }
+
+  record prompt-argument {
+    name: string,
+    description: option<string>,
+    required: option<bool>
+  }
+
+  record get-prompt-result {
+    description: option<string>,
+    messages: list<prompt-message>
+  }
+
+  record prompt-message {
+    role: prompt-message-role,
+    content: prompt-message-content
+  }
+
+  enum prompt-message-role {
+    user,
+    assistant
+  }
+
+  enum prompt-message-content {
+    text(prompt-message-text),
+    image(prompt-message-image),
+    resource(prompt-message-resource)
+  }
+
+  record prompt-message-text {
+    text: string
+  }
+
+  record prompt-message-image {
+    image: image-content
+  }
+
+  record prompt-message-resource {
+    resource: embedded-resource
+  }
+
+}
+
+world mcp-world {
+  // Exporting the router interface as part of the world
+  export mcp-router.router;
+}

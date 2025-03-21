@@ -1,8 +1,9 @@
-use actix::ResponseFuture;
 use serde_json::Value;
 
 use crate::router::{router::CapabilitiesBuilder, router_registry::ROUTER_SEPERATOR, Router};
 use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Resource, ResourceContents::{self, TextResourceContents}, Tool, ToolError};
+
+use super::router::ResponseFuture;
 
 /// **A simple Hello World router**
 #[derive(Clone)]

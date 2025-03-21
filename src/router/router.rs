@@ -1,9 +1,11 @@
 
 
-use actix::ResponseFuture;
+
+use std::{future::Future, pin::Pin};
+
 use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Resource, Tool, ToolError};
 use serde_json::Value;
-
+pub type ResponseFuture<I> = Pin<Box<dyn Future<Output = I>>>;
 pub trait Router
 where
 Self: Send + Sync + 'static,
