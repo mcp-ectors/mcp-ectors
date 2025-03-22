@@ -9,6 +9,7 @@ pub mod router_service_manager;
 pub mod router;
 pub mod router_actor;
 pub mod system_router;
+pub mod wasm_router;
 
 //pub use native_router_registry::NativeRouterRegistry;
 //pub use wasi_router_registry::WasiRouterRegistry;
@@ -19,3 +20,4 @@ pub use router_service_manager::RouterServiceManager;
 pub use router::Router;
 pub use router_actor::RouterActor;
 pub use system_router::SystemRouter;
+pub use wasm_router::WasmRouter;

@@ -1,12 +1,11 @@
 use actix::{Actor, Addr, Context, Handler};
 
-use crate::{client::ClientRegistryActor, mcp::{InitializationActor, ListPromptsActor, ListResourcesActor, ListToolsActor}, messages::{StartTransport, StopTransport, TransportRequest, TransportResponse}, router::router_registry::ActorRouterRegistry};
+use crate::{client::ClientRegistryActor, mcp::{InitializationActor, ListPromptsActor, ListResourcesActor, ListToolsActor}, messages::{StartTransport, StopTransport, TransportRequest}, router::router_registry::ActorRouterRegistry};
 
 pub trait TransportActorTrait
 where
     Self: Actor<Context = Context<Self>> 
         + Handler<TransportRequest>
-        + Handler<TransportResponse>
         + Handler<StartTransport>
         + Handler<StopTransport>,
     Self: Send + Sync + 'static,  // Ensure the actor itself is thread-safe and has a 'static lifetime

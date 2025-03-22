@@ -1,6 +1,6 @@
-package wasix-mcp;
+package wasix:mcp@0.0.1;
 
-interface mcp-router {
+interface router {
 
   // Define custom types (records) based on Rust structs
   record value {
@@ -41,10 +41,10 @@ interface mcp-router {
     is-error: option<bool>
   }
 
-  enum content {
+  variant content {
     text(text-content),
     image(image-content),
-    resource(embedded-resource)
+    embedded(embedded-resource)
   }
 
   record text-content {
@@ -59,21 +59,16 @@ interface mcp-router {
   }
 
   record embedded-resource {
-    resource: resource-contents,
+    resource-contents: resource-contents,
     annotations: option<annotations>
   }
 
-  record resource {
+  record mcp-resource {
     uri: string,
     name: string,
     description: option<string>,
     mime-type: string,
     annotations: option<annotations>
-  }
-
-  enum resource-contents {
-    text-resource-contents(text-resource-contents),
-    blob-resource-contents(blob-resource-contents)
   }
 
   record text-resource-contents {
@@ -87,6 +82,12 @@ interface mcp-router {
     mime-type: option<string>,
     blob: string
   }
+
+  variant resource-contents {
+    text(text-resource-contents),
+    blob(blob-resource-contents)
+  }
+
 
   record read-resource-result {
     contents: list<resource-contents>
@@ -103,41 +104,28 @@ interface mcp-router {
     assistant
   }
 
-  type datetime = string  // Define as string for UTC datetime
-  type f32 = f32
-  type f64 = f64
+  type datetime = string;  // Define as string for UTC datetime
 
   // Errors
-  enum tool-error {
+  variant tool-error {
     invalid-parameters(string),
     execution-error(string),
     schema-error(string),
     not-found(string)
   }
 
-  enum resource-error {
+  variant resource-error {
     execution-error(string),
     not-found(string)
   }
 
-  enum prompt-error {
+
+  variant prompt-error {
     invalid-parameters(string),
     internal-error(string),
     not-found(string)
   }
 
-  // Define the Router interface
-  interface router {
-    name: func() -> string;
-    instructions: func() -> string;
-    capabilities: func() -> server-capabilities;
-    list-tools: func() -> list<tool>;
-    call-tool: func(tool-name: string, arguments: value) -> result<call-tool-result, tool-error>;
-    list-resources: func() -> list<resource>;
-    read-resource: func(uri: string) -> result<read-resource-result, resource-error>;
-    list-prompts: func() -> list<prompt>;
-    get-prompt: func(prompt-name: string) -> result<get-prompt-result, resource-error>;
-  }
 
   record prompt {
     name: string,
@@ -166,27 +154,25 @@ interface mcp-router {
     assistant
   }
 
-  enum prompt-message-content {
-    text(prompt-message-text),
-    image(prompt-message-image),
-    resource(prompt-message-resource)
+  variant prompt-message-content {
+    text(text-content),
+    image(image-content),
+    mcp-resource(embedded-resource)
   }
 
-  record prompt-message-text {
-    text: string
-  }
 
-  record prompt-message-image {
-    image: image-content
-  }
-
-  record prompt-message-resource {
-    resource: embedded-resource
-  }
-
+  name: func() -> string;
+  instructions: func() -> string;
+  capabilities: func() -> server-capabilities;
+  list-tools: func() -> list<tool>;
+  call-tool: func(tool-name: string, arguments: value) -> result<call-tool-result, tool-error>;
+  list-resources: func() -> list<mcp-resource>;
+  read-resource: func(uri: string) -> result<read-resource-result, resource-error>;
+  list-prompts: func() -> list<prompt>;
+  get-prompt: func(prompt-name: string) -> result<get-prompt-result, resource-error>;
 }
 
-world mcp-world {
+world mcp {
   // Exporting the router interface as part of the world
-  export mcp-router.router;
+  export router;
 }

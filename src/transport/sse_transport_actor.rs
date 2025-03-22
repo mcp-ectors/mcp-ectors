@@ -13,7 +13,7 @@ use crate::client::client_registry::{RegisterClient, NotifyClient};
 
 use crate::mcp::{InitializationActor, ListPromptsActor, ListResourcesActor, ListToolsActor};
 // Ensure these are imported correctly
-use crate::messages::transport_messages::{TransportRequest, TransportResponse, StartTransport, StopTransport};
+use crate::messages::transport_messages::{TransportRequest, StartTransport, StopTransport};
 use crate::messages::{BroadcastSseMessage, CallToolRequest, ClientMessage, DeregisterSseClient, GetPromptRequest, InitializeRequest, InitializedNotificationRequest, ListPromptsRequest, ListResourceTemplatesRequest, ListResourcesRequest, ListToolsRequest, NotifySseClient, ReadResourceRequest, RegisterSseClient, SubscribeRequest, UnsubscribeRequest, JSONRPC_VERSION};
 use crate::router::router_registry::{ActorRouterRegistry, RouterRegistry};
 use crate::utils::json_rpc::{JSON_RPC_INTERNAL_ERROR, MCP_INTERNAL_SERVER_ERROR, MCP_INVALID_METHOD, MCP_INVALID_REQUEST, MCP_SERVICE_UNAVAILABLE};
@@ -169,28 +169,6 @@ impl Handler<TransportRequest> for SseTransportActor
             MCP_INVALID_REQUEST, 
             format!("Did not expect this request: {:?}",msg.request).as_str(), 
         None))
-    }
-}
-
-/// Handles responses sent via SSE.
-impl Handler<TransportResponse> for SseTransportActor
-{
-    type Result = ();
-
-    fn handle(&mut self, msg: TransportResponse, _ctx: &mut Self::Context) -> Self::Result {
-        tracing::info!(
-            "SSE Transport sending response to client {}: {:?}",
-            msg.client_id,
-            msg.response
-        );
-        if let Some(recipient) = self.clients.get(&msg.client_id) {
-            let _ = recipient.do_send(ClientMessage(msg.response));
-        } else {
-            tracing::warn!(
-                "Received response for unknown SSE client: {}",
-                msg.client_id
-            );
-        }
     }
 }
 
