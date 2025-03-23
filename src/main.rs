@@ -28,7 +28,9 @@ async fn main() {
         log_file: "sse.log".into(),
     };
 
-    let mut router_manager = RouterServiceManager::default().await;
+    let wasm_path = "./wasm";
+
+    let mut router_manager = RouterServiceManager::default(Some(wasm_path.to_string())).await;
     // ✅ Register router
     let counter_id = "counter".to_string();
     let counter_router = Box::new(CounterRouter::new());

@@ -83,7 +83,9 @@ mod tests {
             log_file: "sse.log".into(),
         };
 
-        let mut router_manager = RouterServiceManager::default().await;
+        let wasm_path = "./tests/wasm";
+
+        let mut router_manager = RouterServiceManager::default(Some(wasm_path.to_string())).await;
         // ✅ Register router
         let mock_id = "mockrouter".to_string();
         let mock = MockRouter::new(get_initialize_result().clone(),get_initial_tools().clone());
