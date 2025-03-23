@@ -46,8 +46,8 @@ impl RouterServiceManager {
             .await;
 
         // Optionally handle the wasm directory at startup by registering all existing wasm routers
-        if let Some(path) = &manager.wasm_path {
-            manager.scan_and_register_wasm_files(path).await;
+        if let Some(path) = manager.wasm_path.clone() {
+            manager.scan_and_register_wasm_files(&path).await;
         }
 
         manager
@@ -109,7 +109,7 @@ impl RouterServiceManager {
     }
 
     // Recursively find all Wasm files in the directory and register them
-    async fn scan_and_register_wasm_files(&self, wasm_path: &str) {
+    async fn scan_and_register_wasm_files(&mut self, wasm_path: &str) {
         let paths = std::fs::read_dir(wasm_path).unwrap();
 
         for entry in paths {
