@@ -6,7 +6,7 @@ use notify::{Config, Error, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::sync::mpsc::channel;
 
 use crate::{mcp::{ListPromptsActor, ListToolsActor, ListResourcesActor}, messages::{AddPromptsRequest, AddResourcesRequest, AddToolsRequest}};
-use super::WasmRouter;
+use super::{wasm_router::spawn_wasm_router, WasmRouter};
 use super::{router_registry::{ActorRouterRegistry, RouterRegistry}, Router, RouterActor, SystemRouter};
 
 pub enum RegistryType {
@@ -210,5 +210,8 @@ impl RouterServiceManager {
 fn create_wasm_router(path: &std::path::Path) -> Box<WasmRouter> {
     // Here, you should implement the logic to create the router
     // This is a simplified version
-    Box::new(WasmRouter::new(path.to_str().unwrap()).expect(format!("could not create wasm router for {:?}",path.clone()).as_str()))
+    let handle = spawn_wasm_router(path.to_str().unwrap());
+    let router = WasmRouter::new(handle);
+    //Box::new(WasmRouter::new(path.to_str().unwrap()).expect(format!("could not create wasm router for {:?}",path.clone()).as_str()))
+    Box::new(router)
 }
