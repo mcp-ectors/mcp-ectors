@@ -1,11 +1,8 @@
-use std::path::{self, PathBuf};
-use std::{future::Future, path::Path};
-use std::sync::Arc;
-use actix::{spawn, Actor, Addr};
-use tracing::{info, trace};
-use notify::{Config, Error, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::sync::mpsc::channel;
-
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+use actix::{Actor, Addr};
+use tracing::info;
+use notify::{Error, Event, EventKind, RecommendedWatcher, Watcher};
 use crate::{mcp::{ListPromptsActor, ListToolsActor, ListResourcesActor}, messages::{AddPromptsRequest, AddResourcesRequest, AddToolsRequest}};
 use super::{wasm_router::spawn_wasm_router, WasmRouter};
 use super::{router_registry::{ActorRouterRegistry, RouterRegistry}, Router, RouterActor, SystemRouter};
@@ -20,11 +17,10 @@ pub struct RouterServiceManager {
     list_tools: Addr<ListToolsActor>,
     list_resources: Addr<ListResourcesActor>,
     active_registry: ActorRouterRegistry,
-    wasm_path: Option<String>, // Optional directory to monitor for Wasm files
 }
 
 impl RouterServiceManager {
-    fn new(wasm_path: Option<String>) -> Self {
+    fn new() -> Self {
         let active_registry = ActorRouterRegistry::new();
         let list_prompts = ListPromptsActor::new().start();
         let list_tools = ListToolsActor::new().start();
@@ -35,13 +31,12 @@ impl RouterServiceManager {
             list_tools,
             list_resources,
             active_registry,
-            wasm_path,
         }
     }
 
     pub async fn default(wasm_path: Option<String>) -> Self {
 
-        let mut manager = RouterServiceManager::new(wasm_path.clone());
+        let mut manager = RouterServiceManager::new();
         let system = SystemRouter::new();
         let _ = manager
             .register_router::<SystemRouter>("system".to_string(), Box::new(system))
@@ -51,57 +46,44 @@ impl RouterServiceManager {
         if let Some(path) = wasm_path {
             let wpath = Arc::new(path);
             manager.clone().scan_and_register_wasm_files(wpath.clone()).await;
-            manager.clone().watch_wasm_directory(wpath.clone());
+            let _ = manager.clone().watch_wasm_directory(wpath.clone());
         }
 
         manager
     }
 
     // Watch the wasm directory for changes (create, update, rename, remove)
-    fn watch_wasm_directory(&mut self, wasm_path: Arc<String>) -> Result<(), Box<dyn std::error::Error>>
-    {
-        let (_tx, rx) = channel::<Event>();
-
+    fn watch_wasm_directory(&self, wasm_path: Arc<String>) -> Result<(), Box<dyn std::error::Error>> {
+        let (_tx, rx) = std::sync::mpsc::channel::<Event>();
+        let rsm = Arc::new(Mutex::new(self.clone()));
         let mut watcher = RecommendedWatcher::new(move |result: Result<Event, Error>| {
             match result {
                 Ok(event) => {
                     match event.kind {
-                        // We only care about the creation, modification, and removal of .wasm files
-                        notify::EventKind::Modify(_) | notify::EventKind::Create(_) | notify::EventKind::Remove(_) => {
+                        EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_) => {
                             if let Some(path) = event.paths.first() {
-                                if path.extension() == Some("wasm".as_ref()) {
-                                    let file = path.as_path().to_str().unwrap();
+                                if let Some("wasm") = path.extension().and_then(|ext| ext.to_str()) {
                                     let router_id = path.file_stem().unwrap().to_string_lossy().into_owned();
-                                    // Call the respective function based on event type
-                                    let future = match event.kind {
-                                        notify::EventKind::Create(notify::event::CreateKind::File) => {
-                                            info!("Wasm file created: {:?}", path);
+
+                                    match event.kind {
+                                        EventKind::Create(_) => {
+                                            println!("Wasm file created: {:?}", path);
                                             let router = create_wasm_router(path);
-                                            self.register_router::<WasmRouter>(router_id.clone(), router)
+                                            let _ = rsm.lock().unwrap().register_router::<WasmRouter>(router_id.clone(),router);
                                         }
-                                        notify::EventKind::Modify(notify::event::ModifyKind::Any) => {
-                                            info!("Wasm file modified: {:?}", path);
-                                            self.unregister_router(&router_id);
-                                            let new_router = create_wasm_router(path);
-                                            self.register_router::<WasmRouter>(router_id.clone(), new_router)
+                                        EventKind::Modify(_) => {
+                                            println!("Wasm file modified: {:?}", path);
+                                            let _ = rsm.lock().unwrap().unregister_router(&router_id);
+                                            let router = create_wasm_router(path);
+                                            let _ = rsm.lock().unwrap().register_router::<WasmRouter>(router_id.clone(),router);
                                         }
-                                        notify::EventKind::Remove(notify::event::RemoveKind::File) => {
-                                            info!("Wasm file removed: {:?}", path);
-                                            self.unregister_router(&router_id).await;
-                                            return ()
+                                        EventKind::Remove(_) => {
+                                            println!("Wasm file removed: {:?}", path);
+                                            let _ = rsm.lock().unwrap().unregister_router(&router_id);
                                         }
-                                        _ => return (), // Ignore other types of events
-                                    };
-        
-                                    // If a future was returned, we use it (for async operations)
-                                    Box::pin(future)
-                                } else {
-                                    // not a wasm file, ignore
-                                    return ()
+                                        _ => {}
+                                    }
                                 }
-                            } else {
-                                // not a valid file, ignore
-                                return ()
                             }
                         }
                         _ => {}
@@ -111,22 +93,16 @@ impl RouterServiceManager {
                     eprintln!("Error watching directory: {:?}", e);
                 }
             }
-        }, Config::default())?;
+        }, notify::Config::default())?;
 
-        watcher.watch(Path::new(wasm_path.as_ref()), RecursiveMode::Recursive)?;
+        watcher.watch(Path::new(wasm_path.as_ref()), notify::RecursiveMode::Recursive)?;
 
-        // Watch the directory in a background task
-        actix::spawn(async move {
-            loop {
-                match rx.recv() {
-                    Ok(_) => {} // The logic is handled inside the watcher callback
-                    Err(e) => eprintln!("Error: {:?}", e),
-                }
-            }
-        });
-
-        Ok(())
+        // Loop to keep the watcher alive
+        loop {
+            rx.recv().unwrap();
+        }
     }
+
 
     // Recursively find all Wasm files in the directory and register them
     async fn scan_and_register_wasm_files(&mut self, wasm_path: Arc<String>) {
@@ -138,7 +114,7 @@ impl RouterServiceManager {
                 if path.extension().and_then(|e| e.to_str()) == Some("wasm") {
                     let router = create_wasm_router(&path);
                     let router_id = path.to_str().unwrap().to_string();
-                    self.register_router::<WasmRouter>(router_id, router).await;
+                    let _ = self.register_router::<WasmRouter>(router_id, router).await;
                 }
             }
         }
