@@ -275,7 +275,7 @@ pub fn spawn_wasm_router(wasm_path: &str) -> WasmRouterHandle {
 
         // --- Initialization ---
         let mut config = Config::default();
-        config.async_support(true);
+        config.async_support(false);
 
         // Create a Wasmtime engine and store
         let engine = Engine::new(&config).expect("engine could not be created");
@@ -287,7 +287,7 @@ pub fn spawn_wasm_router(wasm_path: &str) -> WasmRouterHandle {
         let mut store = Store::new(&engine, state);
         let component = Component::from_file(&engine, file.clone()).expect(format!("wasm file {} could not be read",file).as_str());
         let mut linker = Linker::new(&engine);
-        wasmtime_wasi::add_to_linker_async::<MyState>(&mut linker).expect("Could not add wasi to wasm router");
+        wasmtime_wasi::add_to_linker_sync::<MyState>(&mut linker).expect("Could not add wasi to wasm router");
 
         // Instantiate the MCP router from the wasm component
         let router = Mcp::instantiate(&mut store, &component, &linker)

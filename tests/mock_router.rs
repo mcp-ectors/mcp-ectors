@@ -1,12 +1,8 @@
 use std::{future::Future, pin::Pin};
 use mcp_ectors::router::{router::ResponseFuture, Router};
-use async_trait::async_trait;
 use mcp_spec::{handler::ResourceError, prompt::{Prompt, PromptMessage, PromptMessageContent, PromptMessageRole}, protocol::{CallToolResult, GetPromptResult, InitializeResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Annotations, Content::Text, Resource, ResourceContents::TextResourceContents, Role::User, TextContent, Tool};
 use serde_json::Value;
 use chrono::{DateTime, Utc, TimeZone};
-
-
-
 
 /// A simple mock implementation of the Router trait that lets tests set
 /// predetermined responses for specific methods.
@@ -28,7 +24,6 @@ impl MockRouter {
     }
 }
 
-#[async_trait]
 impl Router for MockRouter {
     fn name(&self) -> String {
         "MockRouter".to_string()

@@ -35,8 +35,8 @@ tokio-rustls = "0.26.2"
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version="0.3.19", features = ["env-filter"] }
-wasmtime = "30.0.2"
-wasmtime-wasi = "30.0.2"
+wasmtime = "31.0.0"
+wasmtime-wasi = "31.0.0"
 #mcp-core = { git = "https://github.com/block/goose.git", package="mcp-core"}
 rand = "0.9.0"
 chrono = {version="0.4.40", features = ["serde"]}
@@ -50,4 +50,4 @@ notify = "8.0.0"
 [dev-dependencies]
 chrono = "0.4.40"
 mcp-client = "0.1.0"
-tempfile = "3.19.0"
+tempfile = "3.19.1"
