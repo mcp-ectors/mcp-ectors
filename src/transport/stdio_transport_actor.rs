@@ -13,7 +13,7 @@ pub struct StdioTransportConfig;
 /// Actor for handling Stdio (stdin/stdout) as a JSON-RPC transport
 pub struct StdioTransportActor
 {
-    _router_registry: ActorRouterRegistry,
+    _router_registry: Addr<ActorRouterRegistry>,
 }
 
 impl Actor for StdioTransportActor
@@ -23,7 +23,7 @@ impl Actor for StdioTransportActor
 
 impl StdioTransportActor
 {
-    pub fn new(router_registry: ActorRouterRegistry) -> Self {
+    pub fn new(router_registry: Addr<ActorRouterRegistry>) -> Self {
         Self { _router_registry: router_registry }
     }
 }
@@ -35,7 +35,7 @@ impl TransportActorTrait for StdioTransportActor
     fn new(
         _config: Self::Config,
         _client_registry: Addr<ClientRegistryActor>,
-        router_registry: ActorRouterRegistry,
+        router_registry: Addr<ActorRouterRegistry>,
         _initialize: InitializationActor,
         _prompts: Addr<ListPromptsActor>,
         _tools: Addr<ListToolsActor>,
@@ -117,7 +117,7 @@ impl Handler<TransportRequest> for StdioTransportActor
 
 #[actix_rt::main]
 async fn main() {
-    let router_registry = ActorRouterRegistry::new();
+    let router_registry = ActorRouterRegistry::new().start();
     let transport_actor = StdioTransportActor::new(router_registry.clone()).start();
 
     // The `transport_actor` now processes requests from stdin.

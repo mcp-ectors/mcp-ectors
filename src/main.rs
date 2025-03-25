@@ -1,4 +1,3 @@
-
 use std::fs;
 use std::path::Path;
 
@@ -138,10 +137,8 @@ async fn start_server(log_dir: String, log_file: String, wasm_path: String, port
     };
 
     let router_manager = RouterServiceManager::default(Some(wasm_path)).await;
-    //let counter_id = "counter".to_string();
-    //let counter_router = Box::new(CounterRouter::new());
-    //router_manager.register_router::<CounterRouter>(counter_id, counter_router).await.expect("router could not be registered");
 
+   
     let server = McpServer::new()
         .router_manager(router_manager)
         .transport(Config::Sse(config))
@@ -149,16 +146,19 @@ async fn start_server(log_dir: String, log_file: String, wasm_path: String, port
         .start()
         .unwrap();
 
-    // Graceful shutdown handling
-    let shutdown_signal = async {
-        signal::ctrl_c().await.expect("Failed to listen for ctrl_c signal");
+
+    // Graceful shutdown handling.
+    let ctrl_c_signal = async {
+            
         info!("Shutdown signal received, exiting...");
+        signal::ctrl_c().await
     };
 
+
+    // Wait until a shutdown signal is received.
     tokio::select! {
-        _ = shutdown_signal => {
-            info!("Shutting down MCP Server...");
+        _ = ctrl_c_signal => {
             let _ = server.stop();
-        }
+        },
     }
 }

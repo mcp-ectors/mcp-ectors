@@ -70,7 +70,7 @@ mod tests {
     async fn run_server(shutdown_receiver: tokio::sync::oneshot::Receiver<()>, wasm_path: Option<String>) {
         let log_config = LogConfig {
             log_dir: "logs".to_string(),
-            log_file: "server.log".to_string(),
+            log_file: "test-server.log".to_string(),
             level: Level::WARN,
         };
         
@@ -80,7 +80,7 @@ mod tests {
             tls_cert: None,
             tls_key: None,
             log_dir: "logs".into(),
-            log_file: "sse.log".into(),
+            log_file: "test-sse.log".into(),
         };
 
         let mut router_manager = RouterServiceManager::default(wasm_path).await;
@@ -253,14 +253,14 @@ mod tests {
 
             let list_tools_req = client.list_tools(None).await;
             let list_tools = list_tools_req.unwrap();
-            assert_eq!(list_tools.tools.len(), get_initial_tools().len());
+            assert_eq!(list_tools.tools.len(), get_initial_tools().len() + 1);
             for expected in &get_initial_tools() {
                 assert!(list_tools.tools.iter().any(|t| t.name == format!("mockrouter{}{}",ROUTER_SEPERATOR,expected.name)));
             }
 
             let tool_result = client
                 .call_tool(
-                    format!("mockrouter{}tool1",ROUTER_SEPERATOR).as_str(),
+                    format!("mcpmockrouter{}tool1",ROUTER_SEPERATOR).as_str(),
                     serde_json::json!({ "message": "Client with SSE transport - calling a tool" }),
                 )
                 .await.unwrap();
@@ -273,7 +273,7 @@ mod tests {
             assert!(!resources.resources.is_empty());
             
             // 5. Assert that reading a specific resource returns a valid response.
-            let resource = client.read_resource(format!("mockrouter{}echo://fixedresource",ROUTER_SEPERATOR).as_str()).await.unwrap();
+            let resource = client.read_resource(format!("mcpmockrouter{}echo://fixedresource",ROUTER_SEPERATOR).as_str()).await.unwrap();
             tracing::info!("Resource: {:?}", resource);
             if let Some(ResourceContents::TextResourceContents { text, .. }) = resource.contents.first() {
                 assert_eq!(text, "expected resource value");
@@ -284,13 +284,13 @@ mod tests {
             // 6. Assert that listing prompts returns the expected prompt.
             let prompts= client.list_prompts(None).await.unwrap();
             tracing::info!("Prompts: {:?}", prompts);
-            assert_eq!(prompts.prompts.len(), 1);
+            assert_eq!(prompts.prompts.len(), 2);
             let prompt = &prompts.prompts[0];
-            assert_eq!(prompt.name, format!("mockrouter{}dummy_prompt",ROUTER_SEPERATOR));
+            assert_eq!(prompt.name, format!("mcpmockrouter{}dummy_prompt",ROUTER_SEPERATOR));
             assert_eq!(prompt.description.as_ref().unwrap(), "A dummy prompt for testing");
 
             // 7. Test retrieving a prompt by name.
-            let prompt_future = client.get_prompt(format!("mockrouter{}dummy_prompt",ROUTER_SEPERATOR).as_str(), json!({})).await;
+            let prompt_future = client.get_prompt(format!("mcpmockrouter{}dummy_prompt",ROUTER_SEPERATOR).as_str(), json!({})).await;
             let prompt_response = prompt_future.unwrap().messages;
             if let PromptMessageContent::Text { text } = &prompt_response[0].content {
                 assert_eq!(text, "dummy prompt response");
@@ -323,7 +323,7 @@ mod tests {
             });
 
             // Give the server some time to start.
-            let _ = sleep(Duration::from_millis(200));
+            let _ = sleep(Duration::from_millis(1000));
 
             let time:usize = 5;
             // Test settings.

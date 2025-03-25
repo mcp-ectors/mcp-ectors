@@ -22,7 +22,7 @@ pub struct HandleNotificationMsg {
 
 /// Message sent from TransportManager to RouterRegistry to find the right router.
 #[derive(Message)]
-#[rtype(result = "Option<Addr<RouterActor>>")]
+#[rtype(result = "Option<(Addr<RouterActor>, String)>")]
 pub struct GetRouter {
     pub router_id: String,
     pub(crate) _marker: PhantomData<RouterActor>, // ✅ This makes Rust happy.

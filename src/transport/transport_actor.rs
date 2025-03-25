@@ -16,7 +16,7 @@ where
     fn new(
         config: Self::Config,
         client_registry: Addr<ClientRegistryActor>,
-        router_registry: ActorRouterRegistry, // 🔹 Now works with any router registry that implements `RouterRegistry`
+        router_registry: Addr<ActorRouterRegistry>, // 🔹 Now works with any router registry that implements `RouterRegistry`
         initialize: InitializationActor,
         prompts: Addr<ListPromptsActor>,
         tools: Addr<ListToolsActor>,

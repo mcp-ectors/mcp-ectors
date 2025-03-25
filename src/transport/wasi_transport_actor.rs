@@ -15,7 +15,7 @@ pub struct WasiTransportConfig {
 pub struct WasiTransportActor
 {
     _registry_addr: Addr<ClientRegistryActor>,
-    _router_registry: ActorRouterRegistry,
+    _router_registry: Addr<ActorRouterRegistry>,
     _prompts: Addr<ListPromptsActor>,
     _tools: Addr<ListToolsActor>,
     _resources: Addr<ListResourcesActor>,
@@ -27,7 +27,7 @@ impl WasiTransportActor
     pub fn new(
        _config: WasiTransportConfig,
         _registry_addr: Addr<ClientRegistryActor>,
-        _router_registry: ActorRouterRegistry,
+        _router_registry: Addr<ActorRouterRegistry>,
         _prompts: Addr<ListPromptsActor>,
         _tools: Addr<ListToolsActor>,
         _resources: Addr<ListResourcesActor>,
@@ -50,7 +50,7 @@ impl TransportActorTrait for WasiTransportActor
     fn new(
         config: Self::Config,
         client_registry: Addr<ClientRegistryActor>,
-        router_registry: ActorRouterRegistry,
+        router_registry: Addr<ActorRouterRegistry>,
         _initialize: InitializationActor,
         prompts: Addr<ListPromptsActor>,
         tools: Addr<ListToolsActor>,

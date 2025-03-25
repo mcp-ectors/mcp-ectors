@@ -1,13 +1,13 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use actix::{Actor, Addr};
-use tokio::task;
-use tracing::{error, info};
+use tracing::info;
 use notify::{Error, Event, EventKind, RecommendedWatcher, Watcher};
+use crate::messages::{GetRouter, RegisterRouter, UnregisterRouter};
 use crate::{mcp::{ListPromptsActor, ListToolsActor, ListResourcesActor}, messages::{AddPromptsRequest, AddResourcesRequest, AddToolsRequest}};
 use super::wasm_router::spawn_wasm_router;
 use super::WasmRouter;
-use super::{router_registry::{ActorRouterRegistry, RouterRegistry}, Router, RouterActor, SystemRouter};
+use super::{router_registry::ActorRouterRegistry, Router, RouterActor, SystemRouter};
 
 pub enum RegistryType {
     Native,
@@ -18,12 +18,12 @@ pub struct RouterServiceManager {
     list_prompts: Addr<ListPromptsActor>,
     list_tools: Addr<ListToolsActor>,
     list_resources: Addr<ListResourcesActor>,
-    active_registry: ActorRouterRegistry,
+    active_registry: Addr<ActorRouterRegistry>,
 }
 
 impl RouterServiceManager {
     fn new() -> Self {
-        let active_registry = ActorRouterRegistry::new();
+        let active_registry = ActorRouterRegistry::new().start();
         let list_prompts = ListPromptsActor::new().start();
         let list_tools = ListToolsActor::new().start();
         let list_resources = ListResourcesActor::new().start();
@@ -49,20 +49,21 @@ impl RouterServiceManager {
             let wpath = Arc::new(path);
             manager.clone().scan_and_register_wasm_files(wpath.clone()).await;
             // Spawn the directory watch on a separate async task
-            let wpath_clone = wpath.clone();
-            let watcher = manager.clone();
-            task::spawn(async move {
-                if let Err(e) = watcher.watch_wasm_directory(wpath_clone) {
+            let _wpath_clone = wpath.clone();
+            let _watcher = manager.clone();
+            /*tokio::task::spawn(async move {
+                if let Err(e) = watcher.watch_wasm_directory(wpath_clone).await {
                     error!("Error watching directory: {:?}", e);
                 }
             });
+            */
         }
 
         manager
     }
 
     // Watch the wasm directory for changes (create, update, rename, remove)
-    fn watch_wasm_directory(&self, wasm_path: Arc<String>) -> Result<(), Box<dyn std::error::Error>> {
+    async fn _watch_wasm_directory(&self, wasm_path: Arc<String>) -> Result<(), Box<dyn std::error::Error>> {
         let (_tx, rx) = std::sync::mpsc::channel::<Event>();
         let rsm = Arc::new(Mutex::new(self.clone()));
         let mut watcher = RecommendedWatcher::new(move |result: Result<Event, Error>| {
@@ -72,8 +73,12 @@ impl RouterServiceManager {
                         EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_) => {
                             if let Some(path) = event.paths.first() {
                                 if let Some("wasm") = path.extension().and_then(|ext| ext.to_str()) {
-                                    let router_id = path.file_stem().unwrap().to_string_lossy().into_owned();
-
+                                    //let router_id = path.file_stem().unwrap().to_string_lossy().into_owned();
+                                    let router_id = path.file_stem()
+                                        .and_then(|name| name.to_str())  // Get the file name without the extension
+                                        .unwrap_or("defaultname")       // Provide a default name in case of failure
+                                        .replace('_', "")               // Replace all underscores
+                                        .to_string();
                                     match event.kind {
                                         EventKind::Create(_) => {
                                             println!("Wasm file created: {:?}", path);
@@ -81,10 +86,15 @@ impl RouterServiceManager {
                                             let _ = rsm.lock().unwrap().register_router::<WasmRouter>(router_id.clone(),router);
                                         }
                                         EventKind::Modify(_) => {
-                                            println!("Wasm file modified: {:?}", path);
-                                            let _ = rsm.lock().unwrap().unregister_router(&router_id);
-                                            let router = create_wasm_router(path);
-                                            let _ = rsm.lock().unwrap().register_router::<WasmRouter>(router_id.clone(),router);
+                                            // this gets called twice. One time with the old and one time with the new
+                                            if path.exists() {
+                                                println!("Wasm file modified - new name: {:?}", path);
+                                                let router = create_wasm_router(path);
+                                                let _ = rsm.lock().unwrap().register_router::<WasmRouter>(router_id.clone(),router);
+                                            } else {
+                                                println!("Wasm file modified - oldname: {:?}", path);
+                                                let _ = rsm.lock().unwrap().unregister_router(&router_id);
+                                            }
                                         }
                                         EventKind::Remove(_) => {
                                             println!("Wasm file removed: {:?}", path);
@@ -122,8 +132,13 @@ impl RouterServiceManager {
                 let path = entry.path();
                 if path.extension().and_then(|e| e.to_str()) == Some("wasm") {
                     let router = create_wasm_router(&path);
-                    let router_id = path.to_str().unwrap().to_string();
-                    let _ = self.register_router::<WasmRouter>(router_id, router).await;
+                    let router_id = path.file_stem()
+                        .and_then(|name| name.to_str())  // Get the file name without the extension
+                        .unwrap_or("defaultname")       // Provide a default name in case of failure
+                        .replace('_', "")               // Replace all underscores
+                        .to_string();
+                    
+                    let _ = self.register_router::<WasmRouter>(router_id.clone(), router).await;
                 }
             }
         }
@@ -134,27 +149,37 @@ impl RouterServiceManager {
         let tools = router.list_tools();
         let resources = router.list_resources();
         let prompts = router.list_prompts();
-        let _capabilities = &router.capabilities().clone();
+        let capabilities = router.capabilities().clone();
         let router_addr = RouterActor::new(Arc::new(router)).start();
 
         info!("Registering router {} at {:?}", router_id.clone(), router_addr.clone());
-        self.active_registry.register_router(router_id.clone(), router_addr.clone())?;
+        //self.active_registry.register_router(router_id.clone(), router_addr.clone())?;
+        let _ = self.active_registry
+        .send(RegisterRouter { router_id: router_id.to_string(), router_addr: router_addr.clone(), capabilities: Some(capabilities)})
+        .await
+        .unwrap();
 
-        self.list_prompts.do_send(AddPromptsRequest {
-            router_id: router_id.clone(),
-            prompts,
-            router: router_addr.clone(),
-        });
-        self.list_tools.do_send(AddToolsRequest {
-            router_id: router_id.clone(),
-            tools,
-            router: router_addr.clone(),
-        });
-        self.list_resources.do_send(AddResourcesRequest {
-            router_id: router_id.clone(),
-            resources,
-            router: router_addr.clone(),
-        });
+        if prompts.len() > 0 {
+            self.list_prompts.do_send(AddPromptsRequest {
+                router_id: router_id.clone(),
+                prompts,
+                router: router_addr.clone(),
+            });
+        }
+        if tools.len() > 0 { 
+            self.list_tools.do_send(AddToolsRequest {
+                router_id: router_id.clone(),
+                tools,
+                router: router_addr.clone(),
+            });
+        }
+        if resources.len() > 0 {
+            self.list_resources.do_send(AddResourcesRequest {
+                router_id: router_id.clone(),
+                resources,
+                router: router_addr.clone(),
+            });
+        }
 
         Ok(())
     }
@@ -162,17 +187,23 @@ impl RouterServiceManager {
     // Unregister the router
     pub async fn unregister_router(&mut self, router_id: &str) -> Result<(), String> {
         // Unregister the router
-        self.active_registry.unregister_router(router_id);
-
+        let _ = self.active_registry
+        .send(UnregisterRouter { router_id: router_id.to_string() })
+        .await
+        .unwrap();
+        
         info!("Unregistered router: {}", router_id);
         Ok(())
     }
 
-    pub async fn get_router(&self, action: String) -> (Option<Addr<RouterActor>>, String) {
-        self.active_registry.get_router(action.clone())
+    pub async fn get_router(&self, action: String) -> Option<(Addr<RouterActor>, String)> {
+        self.active_registry
+        .send(GetRouter { router_id: action.clone(), _marker: std::marker::PhantomData })
+        .await
+        .unwrap()
     }
 
-    pub fn get_registry(&self) -> ActorRouterRegistry {
+    pub fn get_registry(&self) -> Addr<ActorRouterRegistry> {
         self.active_registry.clone()
     }
 
