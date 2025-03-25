@@ -14,6 +14,7 @@ use mcp_ectors::transport::sse_transport_actor::SseTransportConfig;
 
 const LOGS_DIR: &str = "logs";
 const LOGS_FILE: &str = "server.log";
+const LOGS_LEVEL: &str = "warn";
 const PORT: &str = "8080";
 const WASM_DIR: &str = "./wasm";
 
@@ -34,6 +35,10 @@ async fn main() {
                     .long("log_file")
                     .default_value(LOGS_FILE)
                     .help("Log file name"))
+                .arg(Arg::new("log_level")
+                    .long("log_level")
+                    .default_value(LOGS_LEVEL)
+                    .help("Log level can be trace, debug, info, warn, error with warn being default"))
                 .arg(Arg::new("port")
                     .long("port")
                     .default_value(PORT)
@@ -75,18 +80,19 @@ async fn main() {
 
     match matches.subcommand() {
         None => {
-            start_server(LOGS_DIR.to_string(), LOGS_FILE.to_string(), WASM_DIR.to_string(), PORT.parse().unwrap(), None, None).await;
+            start_server(LOGS_DIR.to_string(), LOGS_FILE.to_string(), LOGS_LEVEL.to_string(), WASM_DIR.to_string(), PORT.parse().unwrap(), None, None).await;
         },
         Some(("start", sub_m)) => {
             
             let log_dir = sub_m.get_one::<String>("log_dir").unwrap().to_string();
             let log_file = sub_m.get_one::<String>("log_file").unwrap().to_string();
+            let log_level = sub_m.get_one::<String>("log_level").unwrap().to_string();
             let port = sub_m.get_one::<String>("port").unwrap().parse::<u16>().unwrap();
             let wasm_path = sub_m.get_one::<String>("wasm_path").unwrap().to_string();
             let tls_cert = sub_m.get_one::<String>("tls_cert").map(|s| s.to_string());
             let tls_key = sub_m.get_one::<String>("tls_key").map(|s| s.to_string());
 
-            start_server(log_dir, log_file, wasm_path, port, tls_cert, tls_key).await;
+            start_server(log_dir, log_file, log_level, wasm_path, port, tls_cert, tls_key).await;
         }
         Some(("login", _)) => {
             // Implement OAuth login flow here
@@ -111,11 +117,19 @@ async fn main() {
     }
 }
 
-async fn start_server(log_dir: String, log_file: String, wasm_path: String, port: u16, tls_cert: Option<String>, tls_key: Option<String>) {
+async fn start_server(log_dir: String, log_file: String, log_level: String, wasm_path: String, port: u16, tls_cert: Option<String>, tls_key: Option<String>) {
+    let level = match log_level.to_lowercase().as_str() {
+        "info" => Level::INFO,
+        "debug" => Level::DEBUG,
+        "warn" => Level::WARN,
+        "error" => Level::ERROR,
+        "trace" => Level::TRACE,
+        _ => Level::WARN,
+    };
     let log_config = LogConfig {
         log_dir,
         log_file,
-        level: Level::INFO,
+        level,
     };
 
     let wasm_path_dir = Path::new(&wasm_path);
