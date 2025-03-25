@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use actix::Addr;
+use actix::{Actor, Addr, Context, Handler};
+
+use crate::messages::{GetRouter, RegisterRouter, UnregisterRouter};
 
 use super::RouterActor;
 
@@ -15,6 +17,11 @@ pub trait RouterRegistry {
 #[derive(Clone)]
 pub struct ActorRouterRegistry{
     routers: HashMap<String, Addr<RouterActor>>,
+}
+
+impl Actor for ActorRouterRegistry
+{
+    type Context = Context<Self>;
 }
 
 impl ActorRouterRegistry{
@@ -60,6 +67,44 @@ impl RouterRegistry for ActorRouterRegistry
 
     fn unregister_router(&mut self, router_id: &str) {
         self.routers.remove(router_id);
+    }
+}
+
+impl Handler<GetRouter> for ActorRouterRegistry {
+    type Result = Option<(Addr<RouterActor>,String)>;
+
+    fn handle(&mut self, msg: GetRouter, _: &mut Self::Context) -> Self::Result {
+        let (router_id, action_opt) = split_at_seperator(msg.router_id.clone());
+        let action = action_opt.unwrap_or(router_id.clone());
+        self.routers.get(&router_id)
+            .cloned() // If router exists, clone and return it
+            .map(|router| (router, action))
+    }
+}
+
+impl Handler<RegisterRouter> for ActorRouterRegistry {
+    type Result = Result<(), ()>;
+
+    fn handle(&mut self, msg: RegisterRouter, _: &mut Self::Context) -> Self::Result {
+        if msg.router_id.contains("_") {
+            return Err(()); // Or handle the error appropriately
+        }
+        if self.routers.contains_key(&msg.router_id) {
+            return Err(()); // Handle the error (router already exists)
+        }
+
+        // Register the router with the given ID
+        self.routers.insert(msg.router_id, msg.router_addr);
+        Ok(())
+    }
+}
+
+
+impl Handler<UnregisterRouter> for ActorRouterRegistry {
+    type Result = ();
+
+    fn handle(&mut self, msg: UnregisterRouter, _: &mut Self::Context) {
+        self.routers.remove(&msg.router_id);
     }
 }
 

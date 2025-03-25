@@ -1,11 +1,13 @@
 
 # MCP SSE Server (mcp-ectors)
 
-The **MCP SSE Server**, or **mcp-ectors** for short, is an enterprise-ready, high-performance server designed to enable seamless integration and interaction between large language models (LLMs) and various tools, resources, and workflow prompts. This powerful server acts as the bridge, much like a **USB** interface, for LLMs to gain access to multiple capabilities, enabling agents and agentic AI. Built using **Rust** and **actors**, it is optimized for performance and scalability, making it a great fit for enterprise environments.
+The **MCP SSE Server**, or **mcp-ectors** for short, is an enterprise-ready, high-performance server designed to enable seamless integration and interaction between large language models (LLMs) and various tools, resources, and workflow prompts. This powerful server acts as the bridge, much like a **USB** interface, for LLMs to gain access to multiple capabilities, enabling agents and agentic AI. Built using **Rust**, **Wasm** and **actors**, it is optimized for performance and scalability, making it a great fit for enterprise environments.
 
 > **Note**: The name *mcp-ectors* comes from "MCP Enterprise Actors Server", and has nothing to do with the creator's last name, despite how it might sound 😉
 
 ## Key Features
+- **Wasm Wasix MCP Router**: The default way to create and manage MCPs through a Wasm-based approach with Wasix. This allows seamless integration with WebAssembly-based environments, making it highly portable and extensible for LLMs.
+- **Wasm Support**: With Wasm support built via Wasix-MCP.router, mcp-ectors offers a lightweight and flexible platform for running various MCPs, enabling tools and resources in a WebAssembly environment.
 - **High Performance**: Built with **actors** and **Rust**, the server ensures high scalability and concurrency.
 - **MCP as the USB for LLMs**: Enables access to tools, resources, and workflow prompts through a clean API.
 - **Reuse Connections**: Unlike other MCP servers, mcp-ectors allows multiple routers to be deployed on the same connection, simplifying architecture and resource management.
@@ -49,30 +51,72 @@ MCP-ectors enables you to create and register new routers through the **Router T
 
 #### Example:
 ```rust
-use mcp_ectors::router::Router;
+use exports::wasix::mcp::router::{Role::User, Annotations, ToolsCapability, ResourcesCapability, PromptsCapability, CallToolResult, Content::Text, GetPromptResult, Guest, McpResource, Prompt, PromptMessage, PromptMessageContent, PromptMessageRole, ReadResourceResult, ResourceContents, ResourceError, ServerCapabilities, TextContent, TextResourceContents, Tool, ToolError, PromptError, Value};
 
-pub struct MyNewRouter;
+wit_bindgen::generate!({
+    path: "wit/world.wit",
+    world: "mcp",
+});
 
-impl Router for MyNewRouter {
-    fn handle_request(&self, request: Request) -> Response {
-        // Implement your router's logic here
+
+#[derive(Clone)]
+pub struct MyRouter;
+
+impl Guest for MyRouter {
+    fn name() -> String {
+        "MyRouter".to_string()
+    }
+
+    fn instructions() -> String {
+        "Your instructions go here".to_string()
+    }
+
+    fn capabilities() -> ServerCapabilities {
+        ServerCapabilities {
+            tools: Some(ToolsCapability{ list_changed: Some(true) }),
+            resources: Some(ResourcesCapability{ subscribe: Some(true), list_changed: Some(false)}),
+            prompts: Some(PromptsCapability{ list_changed: Some(true) }),
+        }
+    }
+
+    fn list_tools() -> Vec<Tool> {
+        ...
+    }
+
+    fn call_tool(
+        tool_name: String,
+        arguments: Value,
+    ) -> Result<CallToolResult, ToolError> {
+        ...
+    }
+
+    fn list_resources() -> Vec<McpResource> {
+        ...
+    }
+
+    fn read_resource(
+        uri: String,
+    ) -> Result<ReadResourceResult, ResourceError> {
+        ...
+    }
+
+    fn list_prompts() -> Vec<Prompt> {
+        ...
+    }
+
+    fn get_prompt(prompt_name: String) -> Result<GetPromptResult, PromptError> {
+        ...
     }
 }
+
+export!(YourRouter);
 ```
 
 ### Registering Routers
-In **MCP**, tools, resources, and prompts are registered as `routerid_tool`, `routerid_prompt`, and `routerid_resource` to keep everything well-organized. The Router Service Manager allows these elements to be dynamically added.
+In **MCP**, tools, resources, and prompts are registered as `routerid_tool`, `routerid_prompt`, and `routerid_resource` to keep everything well-organized. The Router Service Manager adds new routers by dropping the .wasm file in the wasm directory the server loads from.
 
 #### Example Registration:
-```rust
-let counterid = "counter".to_string();
-let counter_router = Box::new(CounterRouter::new());
-router_manager.register_router::<CounterRouter>(counterid, counter_router).await.expect("router could not be registered");
-
-let hwid = "helloworld".to_string();
-let hw_router = Box::new(HelloWorldRouter::new());
-router_manager.register_router::<HelloWorldRouter>(hwid, hw_router).await.expect("router could not be registered");
-```
+Just start the server via **mcp-ectors start --wasm_path wasm** and drop your MPC router wasms in the directory. 
 
 ### Architecture Overview
 

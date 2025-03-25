@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::router::{router::{CapabilitiesBuilder, ResponseFuture}, Router};
-use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, ResourceContents::TextResourceContents, Tool, ToolError};
+use mcp_spec::{handler::{PromptError, ResourceError}, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, ResourceContents::TextResourceContents, Tool, ToolError};
 
 /// **A simple counter router that implements `RouterHandler`**
 #[derive(Clone)]
@@ -156,7 +156,7 @@ impl Router for CounterRouter {
         vec![]
     }
     
-    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, ResourceError>> {
+    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, PromptError>> {
 
         let result = GetPromptResult{ description: None, messages: vec![] };
         Box::pin(async move {

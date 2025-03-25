@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use actix::{Actor,Context, Handler, ResponseFuture};
 
-use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, ErrorData, GetPromptResult, JsonRpcError, JsonRpcResponse, ReadResourceResult}, Resource, Tool, ToolError};
+use mcp_spec::{handler::{PromptError, ResourceError}, prompt::Prompt, protocol::{CallToolResult, ErrorData, GetPromptResult, JsonRpcError, JsonRpcResponse, ReadResourceResult}, Resource, Tool, ToolError};
 use serde_json::{json, Value};
 use tracing::error;
 
@@ -54,7 +54,7 @@ impl RouterActor
         self.router.list_prompts()
     }
 
-    pub async fn get_prompt(&self, prompt_name: &str) -> Result<GetPromptResult, ResourceError> {
+    pub async fn get_prompt(&self, prompt_name: &str) -> Result<GetPromptResult, PromptError> {
         self.router.get_prompt(prompt_name).await
     }
 }

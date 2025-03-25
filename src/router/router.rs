@@ -3,7 +3,7 @@
 
 use std::{future::Future, pin::Pin};
 
-use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Resource, Tool, ToolError};
+use mcp_spec::{handler::{PromptError, ResourceError}, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Resource, Tool, ToolError};
 use serde_json::Value;
 pub type ResponseFuture<I> = Pin<Box<dyn Future<Output = I>>>;
 pub trait Router
@@ -25,7 +25,7 @@ Self: Send + Sync + 'static,
         uri: &str,
     ) -> ResponseFuture<Result<ReadResourceResult, ResourceError>>;
     fn list_prompts(&self) -> Vec<Prompt>;
-    fn get_prompt(&self, prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, ResourceError>>;
+    fn get_prompt(&self, prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, PromptError>>;
 }
 
 

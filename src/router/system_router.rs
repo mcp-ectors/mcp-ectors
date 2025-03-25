@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::router::{router::CapabilitiesBuilder, router_registry::ROUTER_SEPERATOR, Router};
-use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Resource, ResourceContents::{self, TextResourceContents}, Tool, ToolError};
+use mcp_spec::{handler::{PromptError, ResourceError}, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Resource, ResourceContents::{self, TextResourceContents}, Tool, ToolError};
 
 use super::router::ResponseFuture;
 
@@ -86,7 +86,7 @@ impl Router for SystemRouter {
         vec![]
     }
     
-    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, ResourceError>> {
+    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, PromptError>> {
 
         let result = GetPromptResult{ description: None, messages: vec![] };
         Box::pin(async move {

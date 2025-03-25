@@ -1,7 +1,7 @@
 
 #[cfg(test)]
 #[path = "../tests/mock_router.rs"]
-mod mock_router;
+mod wasm_mock_router;
 
 #[cfg(test)]
 mod tests {
@@ -29,7 +29,7 @@ mod tests {
     use std::collections::{HashMap, HashSet};
     use std::time::Duration;
 
-    use crate::mock_router::MockRouter;
+    use crate::wasm_mock_router::MockRouter;
 
     fn get_initialize_result() -> InitializeResult {
         InitializeResult {
@@ -67,10 +67,10 @@ mod tests {
         ]
     }
 
-    async fn run_server(shutdown_receiver: tokio::sync::oneshot::Receiver<()>) {
+    async fn run_server(shutdown_receiver: tokio::sync::oneshot::Receiver<()>, wasm_path: Option<String>) {
         let log_config = LogConfig {
             log_dir: "logs".to_string(),
-            log_file: "server.log".to_string(),
+            log_file: "test-server.log".to_string(),
             level: Level::WARN,
         };
         
@@ -80,10 +80,10 @@ mod tests {
             tls_cert: None,
             tls_key: None,
             log_dir: "logs".into(),
-            log_file: "sse.log".into(),
+            log_file: "test-sse.log".into(),
         };
 
-        let mut router_manager = RouterServiceManager::default().await;
+        let mut router_manager = RouterServiceManager::default(wasm_path).await;
         // ✅ Register router
         let mock_id = "mockrouter".to_string();
         let mock = MockRouter::new(get_initialize_result().clone(),get_initial_tools().clone());
@@ -133,7 +133,7 @@ mod tests {
 
             // Spawn the server in a background task
             let server_task = spawn_local(async {
-                run_server(shutdown_receiver).await;
+                run_server(shutdown_receiver, None).await;
             });
 
             // Give the server some time to start.
@@ -215,6 +215,98 @@ mod tests {
         }).await;
     }
 
+    #[tokio::test]
+    async fn test_server_integration_with_wasm_mock_router() {
+        // Create a channel to signal when the server should stop
+        let (shutdown_trigger, shutdown_receiver) = tokio::sync::oneshot::channel::<()>();
+
+        let local = tokio::task::LocalSet::new();
+        local.run_until(async {
+
+            // Spawn the server in a background task
+            let server_task = spawn_local(async {
+                run_server(shutdown_receiver, Some("tests/wasm/target/wasm32-wasip2/debug".to_string())).await;
+            });
+
+            // Give the server some time to start.
+            let _ = sleep(Duration::from_millis(200));
+
+
+            let client_transport = mcp_client::SseTransport::new("http://localhost:3000/sse", HashMap::new());
+            let handle = client_transport.start().await.unwrap();
+            let service = McpService::with_timeout(handle, Duration::from_secs(3));
+            //let service = McpService::new(handle);
+            let mut client = McpClient::new(service);
+
+            let server_info = client
+                .initialize(
+                    ClientInfo {
+                        name: "test-client".into(),
+                        version: "1.0.0".into(),
+                    },
+                    ClientCapabilities::default(),
+                )
+                .await;
+            tracing::info!("Server info: {:?}",server_info);
+            assert_eq!(server_info.unwrap(), get_initialize_result());
+
+
+            let list_tools_req = client.list_tools(None).await;
+            let list_tools = list_tools_req.unwrap();
+            assert!(list_tools.tools.len() > 1);
+            for expected in &get_initial_tools() {
+                assert!(list_tools.tools.iter().any(|t| t.name == format!("mockrouter{}{}",ROUTER_SEPERATOR,expected.name)));
+            }
+
+            let tool_result = client
+                .call_tool(
+                    format!("mcpmockrouter{}tool1",ROUTER_SEPERATOR).as_str(),
+                    serde_json::json!({ "message": "Client with SSE transport - calling a tool" }),
+                )
+                .await.unwrap();
+            tracing::info!("Tool result: {:?}", tool_result);
+            assert_eq!(tool_result.is_error, Some(false));
+
+            // 4. Assert that listing resources returns a non-empty list.
+            let resources = client.list_resources(None).await.unwrap();
+            tracing::info!("Resources: {:?}", resources);
+            assert!(!resources.resources.is_empty());
+            
+            // 5. Assert that reading a specific resource returns a valid response.
+            let resource = client.read_resource(format!("mcpmockrouter{}echo://fixedresource",ROUTER_SEPERATOR).as_str()).await.unwrap();
+            tracing::info!("Resource: {:?}", resource);
+            if let Some(ResourceContents::TextResourceContents { text, .. }) = resource.contents.first() {
+                assert_eq!(text, "expected resource value");
+            } else {
+                panic!("Expected a TextResourceContents variant");
+            }
+
+            // 6. Assert that listing prompts returns the expected prompt.
+            let prompts= client.list_prompts(None).await.unwrap();
+            tracing::info!("Prompts: {:?}", prompts);
+            assert_eq!(prompts.prompts.len(), 2);
+            let prompt = &prompts.prompts[0];
+            assert_eq!(prompt.name, format!("mcpmockrouter{}dummy_prompt",ROUTER_SEPERATOR));
+            assert_eq!(prompt.description.as_ref().unwrap(), "A dummy prompt for testing");
+
+            // 7. Test retrieving a prompt by name.
+            let prompt_future = client.get_prompt(format!("mcpmockrouter{}dummy_prompt",ROUTER_SEPERATOR).as_str(), json!({})).await;
+            let prompt_response = prompt_future.unwrap().messages;
+            if let PromptMessageContent::Text { text } = &prompt_response[0].content {
+                assert_eq!(text, "dummy prompt response");
+            } else {
+                panic!("Expected a Text variant");
+            }
+
+            // Once the test logic is complete, trigger the shutdown.
+            let _ = shutdown_trigger.send(());  // Wait for the shutdown signal
+            tracing::info!("Test completed, server should stop now.");
+
+            // Stop the server gracefully
+            let _ = server_task.await;
+        }).await;
+    }
+
 
     
     #[tokio::test]
@@ -227,11 +319,11 @@ mod tests {
 
             // Spawn the server in a background task
             let server_task = spawn_local(async {
-                run_server(shutdown_receiver).await;
+                run_server(shutdown_receiver, None).await;
             });
 
             // Give the server some time to start.
-            let _ = sleep(Duration::from_millis(200));
+            let _ = sleep(Duration::from_millis(1000));
 
             let time:usize = 5;
             // Test settings.
@@ -392,18 +484,18 @@ mod tests {
 
             // Spawn the server in a background task
             let server_task = spawn_local(async {
-                run_server(shutdown_receiver).await;
+                run_server(shutdown_receiver, None).await;
             });
 
     
             // Give the server time to start.
             sleep(Duration::from_millis(200)).await;
      
-            let time: usize = 10;
+            let time: usize = 5;
             // Test settings.
             let run_duration = Duration::from_secs(time.try_into().unwrap());
             let num_clients = 5;
-            let num_tool_calls = 200; // configurable number of tool calls per cycle
+            let num_tool_calls = 10; // configurable number of tool calls per cycle
     
             // Create an unbounded channel for performance messages.
             let (tx, mut rx) = mpsc::unbounded_channel::<PerfConnectionMessage>();

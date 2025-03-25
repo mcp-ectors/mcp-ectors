@@ -13,9 +13,9 @@ use crate::client::client_registry::{RegisterClient, NotifyClient};
 
 use crate::mcp::{InitializationActor, ListPromptsActor, ListResourcesActor, ListToolsActor};
 // Ensure these are imported correctly
-use crate::messages::transport_messages::{TransportRequest, TransportResponse, StartTransport, StopTransport};
-use crate::messages::{BroadcastSseMessage, CallToolRequest, ClientMessage, DeregisterSseClient, GetPromptRequest, InitializeRequest, InitializedNotificationRequest, ListPromptsRequest, ListResourceTemplatesRequest, ListResourcesRequest, ListToolsRequest, NotifySseClient, ReadResourceRequest, RegisterSseClient, SubscribeRequest, UnsubscribeRequest, JSONRPC_VERSION};
-use crate::router::router_registry::{ActorRouterRegistry, RouterRegistry};
+use crate::messages::transport_messages::{TransportRequest, StartTransport, StopTransport};
+use crate::messages::{BroadcastSseMessage, CallToolRequest, ClientMessage, DeregisterSseClient, GetPromptRequest, GetRouter, InitializeRequest, InitializedNotificationRequest, ListPromptsRequest, ListResourceTemplatesRequest, ListResourcesRequest, ListToolsRequest, NotifySseClient, ReadResourceRequest, RegisterSseClient, SubscribeRequest, UnsubscribeRequest, JSONRPC_VERSION};
+use crate::router::router_registry::ActorRouterRegistry;
 use crate::utils::json_rpc::{JSON_RPC_INTERNAL_ERROR, MCP_INTERNAL_SERVER_ERROR, MCP_INVALID_METHOD, MCP_INVALID_REQUEST, MCP_SERVICE_UNAVAILABLE};
 use crate::utils::JsonRpcUtils;
 
@@ -46,7 +46,7 @@ pub struct SseTransportActor
     clients: HashMap<u64, Recipient<ClientMessage>>, // Track connected SSE clients
     config: SseTransportConfig,
     registry_addr: Addr<ClientRegistryActor>,
-    router_registry: ActorRouterRegistry,
+    router_registry: Addr<ActorRouterRegistry>,
     initialize: InitializationActor,
     prompts: Addr<ListPromptsActor>,
     tools: Addr<ListToolsActor>,
@@ -57,7 +57,7 @@ impl SseTransportActor
 {
     pub fn new(config: SseTransportConfig, 
         registry_addr: Addr<ClientRegistryActor>, 
-        router_registry: ActorRouterRegistry,
+        router_registry: Addr<ActorRouterRegistry>,
         initialize: InitializationActor,
         prompts: Addr<ListPromptsActor>,
         tools: Addr<ListToolsActor>,
@@ -84,7 +84,7 @@ impl TransportActorTrait for SseTransportActor
 
     fn new(config: Self::Config,
            client_registry: Addr<ClientRegistryActor>,
-           router_registry: ActorRouterRegistry,
+           router_registry: Addr<ActorRouterRegistry>,
            initialize: InitializationActor,
            prompts: Addr<ListPromptsActor>,
            tools: Addr<ListToolsActor>,
@@ -169,28 +169,6 @@ impl Handler<TransportRequest> for SseTransportActor
             MCP_INVALID_REQUEST, 
             format!("Did not expect this request: {:?}",msg.request).as_str(), 
         None))
-    }
-}
-
-/// Handles responses sent via SSE.
-impl Handler<TransportResponse> for SseTransportActor
-{
-    type Result = ();
-
-    fn handle(&mut self, msg: TransportResponse, _ctx: &mut Self::Context) -> Self::Result {
-        tracing::info!(
-            "SSE Transport sending response to client {}: {:?}",
-            msg.client_id,
-            msg.response
-        );
-        if let Some(recipient) = self.clients.get(&msg.client_id) {
-            let _ = recipient.do_send(ClientMessage(msg.response));
-        } else {
-            tracing::warn!(
-                "Received response for unknown SSE client: {}",
-                msg.client_id
-            );
-        }
     }
 }
 
@@ -307,7 +285,7 @@ impl Handler<StopTransport> for SseTransportActor
 
 // --- Helper functions for POST and SSE Handlers ---
 async fn sse_handler(registry: Data<Addr<ClientRegistryActor>>) -> Sse<impl Stream<Item = Result<Event, Error>>> {
-    let (tx, rx) = mpsc::channel::<Event>(10);
+    let (tx, rx) = mpsc::channel::<Event>(10000);
     let sse_recipient = SseRecipient { sender: tx.clone() }.start();
     let client_id = registry
         .send(RegisterClient { recipient: sse_recipient.recipient() })
@@ -341,7 +319,7 @@ async fn post_handler(
     query: web::Query<HashMap<String, String>>,
     payload: web::Json<JsonRpcRequest>,
     registry: Data<Addr<ClientRegistryActor>>,
-    router_registry: Data<ActorRouterRegistry>,
+    router_registry: Data<Addr<ActorRouterRegistry>>,
     initialization_actor: Data<InitializationActor>,
     prompts: Data<Addr<ListPromptsActor>>,
     tools: Data<Addr<ListToolsActor>>,
@@ -428,7 +406,7 @@ async fn post_handler(
         },
         method => {
             let id = payload.id.clone();
-            Err(JsonRpcError{jsonrpc: JSONRPC_VERSION.to_owned(), id, error: ErrorData{code: MCP_INVALID_METHOD, message: format!("Invalid method: {}",method), data: None }, }).unwrap()
+            Err(JsonRpcError{jsonrpc: JSONRPC_VERSION.to_owned(), id, error: ErrorData{code: MCP_INVALID_METHOD, message: format!("Invalid method: {}",method), data: None }, })
         }
 
 
@@ -454,8 +432,18 @@ async fn post_handler(
     Ok(HttpResponse::Ok().json("Accepted"))
 }
 
-async fn router_request(id: Option<u64>, action: String, router_registry:Data<ActorRouterRegistry>, req: JsonRpcRequest, attribute: String) -> Result<JsonRpcResponse,JsonRpcError> {
-    let (router,action) = router_registry.get_router(action);
+async fn router_request(id: Option<u64>, action: String, router_registry:Data<Addr<ActorRouterRegistry>>, req: JsonRpcRequest, attribute: String) -> Result<JsonRpcResponse,JsonRpcError> {
+    let response = router_registry
+        .send(GetRouter { router_id: action.clone(), _marker: std::marker::PhantomData })
+        .await
+        .unwrap();
+
+    let (router, action) = match response {
+        Some(response) => (Some(response.0),response.1),
+        None => (None, action.clone()),
+    };
+    
+    //let (router,action) = router_registry.get_router(action);
     // replace whatever parameter had the router_id:action with only action, e.g. hello_world_actor:hello
     let mut req_cloned = req.clone();
     // Check if `params` is `Some` and modify the attribute accordingly

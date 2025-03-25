@@ -1,0 +1,102 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'mcp_ectors'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=mcp-ectors"
+                ],
+                "filter": {
+                    "name": "mcp_ectors",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'mcp-ectors'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=mcp-ectors",
+                    "--package=mcp-ectors"
+                ],
+                "filter": {
+                    "name": "mcp-ectors",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'mcp-ectors'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=mcp-ectors",
+                    "--package=mcp-ectors"
+                ],
+                "filter": {
+                    "name": "mcp-ectors",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'mock_router'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=mock_router",
+                    "--package=mcp-ectors"
+                ],
+                "filter": {
+                    "name": "mock_router",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug integration test 'sse_transport_test'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--test=sse_transport_test",
+                    "--package=mcp-ectors"
+                ],
+                "filter": {
+                    "name": "sse_transport_test",
+                    "kind": "test"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

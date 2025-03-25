@@ -1,7 +1,7 @@
 [package]
 name = "mcp-ectors"
-version = "0.0.1"
-description = "A high-performance enterprise-ready (soon at least) MCP actors-based server for managing multiple mcp routers, supporting tools, prompts and resources."
+version = "0.0.2"
+description = "A high-performance enterprise-ready (soon at least) MCP actors-based server for managing multiple mcp routers via WASM WASIX MCP, supporting tools, prompts and resources."
 authors = ["Maarten Ectors <maarten@ectors.com>"]
 license = "MIT"  # Choose an appropriate license or use SPDX identifiers
 repository = "https://github.com/mcp-ectors/mcp-ectors"  # Link to the repository
@@ -35,8 +35,8 @@ tokio-rustls = "0.26.2"
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version="0.3.19", features = ["env-filter"] }
-wasmtime = "30.0.2"
-wasmtime-wasi = "30.0.2"
+wasmtime = "31.0.0"
+wasmtime-wasi = "31.0.0"
 #mcp-core = { git = "https://github.com/block/goose.git", package="mcp-core"}
 rand = "0.9.0"
 chrono = {version="0.4.40", features = ["serde"]}
@@ -45,8 +45,10 @@ schemars = "0.8.22"
 base64 = "0.22.1"
 tower-service = "0.3.3"
 mcp-spec = "0.1.0"
+notify = "8.0.0"
+clap = "4.5.32"
 
 [dev-dependencies]
 chrono = "0.4.40"
 mcp-client = "0.1.0"
-tempfile = "3.19.0"
+tempfile = "3.19.1"
