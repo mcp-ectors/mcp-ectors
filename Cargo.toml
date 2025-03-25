@@ -46,6 +46,7 @@ base64 = "0.22.1"
 tower-service = "0.3.3"
 mcp-spec = "0.1.0"
 notify = "8.0.0"
+clap = "4.5.32"
 
 [dev-dependencies]
 chrono = "0.4.40"

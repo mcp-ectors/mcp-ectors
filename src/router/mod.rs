@@ -10,6 +10,7 @@ pub mod router;
 pub mod router_actor;
 pub mod system_router;
 pub mod wasm_router;
+pub mod wasix_mcp;
 
 
 //pub use native_router_registry::NativeRouterRegistry;

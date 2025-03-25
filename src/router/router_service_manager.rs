@@ -1,10 +1,12 @@
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use actix::{Actor, Addr};
-use tracing::info;
+use tokio::task;
+use tracing::{error, info};
 use notify::{Error, Event, EventKind, RecommendedWatcher, Watcher};
 use crate::{mcp::{ListPromptsActor, ListToolsActor, ListResourcesActor}, messages::{AddPromptsRequest, AddResourcesRequest, AddToolsRequest}};
-use super::{wasm_router::spawn_wasm_router, WasmRouter};
+use super::wasm_router::spawn_wasm_router;
+use super::WasmRouter;
 use super::{router_registry::{ActorRouterRegistry, RouterRegistry}, Router, RouterActor, SystemRouter};
 
 pub enum RegistryType {
@@ -46,7 +48,14 @@ impl RouterServiceManager {
         if let Some(path) = wasm_path {
             let wpath = Arc::new(path);
             manager.clone().scan_and_register_wasm_files(wpath.clone()).await;
-            let _ = manager.clone().watch_wasm_directory(wpath.clone());
+            // Spawn the directory watch on a separate async task
+            let wpath_clone = wpath.clone();
+            let watcher = manager.clone();
+            task::spawn(async move {
+                if let Err(e) = watcher.watch_wasm_directory(wpath_clone) {
+                    error!("Error watching directory: {:?}", e);
+                }
+            });
         }
 
         manager

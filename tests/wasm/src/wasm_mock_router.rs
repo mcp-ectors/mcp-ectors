@@ -1,4 +1,4 @@
-use exports::wasix::mcp::router::{Role::User, Annotations, ToolsCapability, ResourcesCapability, PromptsCapability, CallToolResult, Content::Text, GetPromptResult, Guest, McpResource, Prompt, PromptMessage, PromptMessageContent, PromptMessageRole, ReadResourceResult, ResourceContents, ResourceError, ServerCapabilities, TextContent, TextResourceContents, Tool, ToolError, Value};
+use exports::wasix::mcp::router::{Role::User, Annotations, ToolsCapability, ResourcesCapability, PromptsCapability, CallToolResult, Content::Text, GetPromptResult, Guest, McpResource, Prompt, PromptMessage, PromptMessageContent, PromptMessageRole, ReadResourceResult, ResourceContents, ResourceError, ServerCapabilities, TextContent, TextResourceContents, Tool, ToolError, PromptError, Value};
 
 wit_bindgen::generate!({
     // with: {
@@ -108,7 +108,7 @@ impl Guest for WasmMockRouter {
         ]
     }
 
-    fn get_prompt(prompt_name: String) -> Result<GetPromptResult, ResourceError> {
+    fn get_prompt(prompt_name: String) -> Result<GetPromptResult, PromptError> {
         let result = GetPromptResult {
             description: None,
             messages: vec![PromptMessage{
@@ -123,7 +123,7 @@ impl Guest for WasmMockRouter {
         if prompt_name == "dummy_prompt" {
             Ok(result.clone())  // Return the result when the prompt matches
         } else {
-            Err(ResourceError::NotFound(prompt_name))  // Return the error when the prompt does not match
+            Err(PromptError::NotFound(prompt_name))  // Return the error when the prompt does not match
         }
         
     }

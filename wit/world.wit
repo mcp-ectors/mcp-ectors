@@ -169,7 +169,7 @@ interface router {
   list-resources: func() -> list<mcp-resource>;
   read-resource: func(uri: string) -> result<read-resource-result, resource-error>;
   list-prompts: func() -> list<prompt>;
-  get-prompt: func(prompt-name: string) -> result<get-prompt-result, resource-error>;
+  get-prompt: func(prompt-name: string) -> result<get-prompt-result, prompt-error>;
 }
 
 world mcp {

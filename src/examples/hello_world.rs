@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use crate::router::{router::{CapabilitiesBuilder, ResponseFuture}, Router};
-use mcp_spec::{handler::ResourceError, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, Tool, ToolError};
+use mcp_spec::{handler::{PromptError, ResourceError}, prompt::Prompt, protocol::{CallToolResult, GetPromptResult, ReadResourceResult, ServerCapabilities}, Content, Resource, Tool, ToolError};
 
 /// **A simple Hello World router**
 #[derive(Clone)]
@@ -86,7 +86,7 @@ impl Router for HelloWorldRouter {
         vec![]
     }
     
-    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, ResourceError>> {
+    fn get_prompt(&self, _prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, PromptError>> {
 
         let result = GetPromptResult{ description: None, messages: vec![] };
         Box::pin(async move {

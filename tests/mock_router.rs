@@ -1,6 +1,6 @@
 use std::{future::Future, pin::Pin};
 use mcp_ectors::router::{router::ResponseFuture, Router};
-use mcp_spec::{handler::ResourceError, prompt::{Prompt, PromptMessage, PromptMessageContent, PromptMessageRole}, protocol::{CallToolResult, GetPromptResult, InitializeResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Annotations, Content::Text, Resource, ResourceContents::TextResourceContents, Role::User, TextContent, Tool};
+use mcp_spec::{handler::PromptError, prompt::{Prompt, PromptMessage, PromptMessageContent, PromptMessageRole}, protocol::{CallToolResult, GetPromptResult, InitializeResult, PromptsCapability, ReadResourceResult, ResourcesCapability, ServerCapabilities, ToolsCapability}, Annotations, Content::Text, Resource, ResourceContents::TextResourceContents, Role::User, TextContent, Tool};
 use serde_json::Value;
 use chrono::{DateTime, Utc, TimeZone};
 
@@ -119,7 +119,7 @@ impl Router for MockRouter {
         ]
     }
 
-    fn get_prompt(&self, prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, ResourceError>> {
+    fn get_prompt(&self, prompt_name: &str) -> ResponseFuture<Result<GetPromptResult, PromptError>> {
         let prompt = prompt_name.to_string(); 
         Box::pin(async move {
             let result = GetPromptResult {
@@ -133,7 +133,7 @@ impl Router for MockRouter {
             if prompt == "dummy_prompt" {
                 Ok(result.clone())  // Return the result when the prompt matches
             } else {
-                Err(ResourceError::NotFound(prompt))  // Return the error when the prompt does not match
+                Err(PromptError::NotFound(prompt))  // Return the error when the prompt does not match
             }
         })
     }
