@@ -313,7 +313,7 @@ pub fn spawn_wasm_router(wasm_path: &str) -> WasmRouterHandle {
                     }
                 },
                 WasmRequest::CallTool(name, value) => {
-                    let mcp_value = json_to_value(value);
+                    let mcp_value = json_to_value(value).or(Some(crate::router::wasm_router::wasix::mcp::router::Value{key:"".to_string(),data:"".to_string()}));
                     match router.wasix_mcp_router()
                         .call_call_tool(&mut store,
                         name.as_str(), 

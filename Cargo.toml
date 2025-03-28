@@ -47,6 +47,7 @@ tower-service = "0.3.3"
 mcp-spec = "0.1.0"
 notify = "8.0.0"
 clap = "4.5.32"
+dotenv = "0.15.0"
 
 [dev-dependencies]
 chrono = "0.4.40"

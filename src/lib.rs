@@ -6,5 +6,6 @@ pub mod utils;
 pub mod mcp;
 pub mod examples;
 pub mod server_builder;
+pub mod secrets;
 
 pub use server_builder::McpServer;
