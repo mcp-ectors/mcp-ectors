@@ -2,6 +2,7 @@
 use std::{collections::HashMap, env};
 use dotenv::dotenv;
 use wasix::mcp::secrets_store::{self, Host, HostSecret, Secret, SecretValue, SecretsError};
+
 use wasmtime::{Result,component::{bindgen, Resource}};
 
 bindgen!({

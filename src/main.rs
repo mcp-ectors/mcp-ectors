@@ -14,7 +14,7 @@ use mcp_ectors::transport::sse_transport_actor::SseTransportConfig;
 
 const LOGS_DIR: &str = "logs";
 const LOGS_FILE: &str = "server.log";
-const LOGS_LEVEL: &str = "warn";
+const LOGS_LEVEL: &str = "info"; //"warn";
 const PORT: &str = "8080";
 const WASM_DIR: &str = "./wasm";
 

@@ -172,7 +172,6 @@ interface router {
   get-prompt: func(prompt-name: string) -> result<get-prompt-result, prompt-error>;
 }
 
-
 interface secrets-list {
   record secrets-description {
     name: string,
