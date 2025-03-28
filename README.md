@@ -1,4 +1,3 @@
-
 # The Enterprise MCP Server (mcp-ectors)
 
 The **Enterprise MCP Server**, or **mcp-ectors** for short, is an enterprise-ready, high-performance and secure MCP server designed to enable seamless integration and interaction between large language models (LLMs) and various tools, resources, and workflow prompts. This powerful server acts as the bridge, much like a **USB** interface, for LLMs to gain access to multiple capabilities, enabling agents and agentic AI. Built using **Rust**, **Wasm** and **actors**, it is optimized for performance, security and scalability, making it a great fit for enterprise environments. MCPEctors can support many different MCP routers which each run in a secure containerised environment [Wasm]. Via the **wasix-mcp** component interface they can securely expose their MCP tools, resources and prompts without being able to harm the server on which the mcp router runs.  
